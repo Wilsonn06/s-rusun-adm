@@ -11,6 +11,7 @@ app.use('/tower', require('./services/tower'));
 app.use('/unit', require('./services/unit'));
 app.use('/floor', require('./services/floor'));
 app.use('/pemilik', require('./services/pemilik'));
+app.use('/devices', require('./services/devices'));
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);

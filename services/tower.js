@@ -3,6 +3,31 @@ const router = express.Router();
 const db = require('../db');
 
 // =====================================================
+// GET semua tower berdasarkan flat_id tertentu
+// =====================================================
+router.get('/by-flat/:flat_id', async (req, res) => {
+  const { flat_id } = req.params;
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        t.tower_id, 
+        t.tower_name, 
+        t.flat_id, 
+        f.flat_name 
+      FROM tower t
+      JOIN flat f ON t.flat_id = f.flat_id
+      WHERE t.flat_id = ?
+      ORDER BY t.tower_id
+    `, [flat_id]);
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error mengambil tower berdasarkan flat_id:', error);
+    res.status(500).json({ message: 'Gagal mengambil data tower.' });
+  }
+});
+
+// =====================================================
 // GET semua tower (beserta nama flat)
 // =====================================================
 router.get('/', async (req, res) => {
@@ -30,8 +55,7 @@ router.get('/', async (req, res) => {
 router.get('/:tower_id', async (req, res) => {
   const { tower_id } = req.params;
   try {
-    const [rows] = await db.query(
-      `
+    const [rows] = await db.query(`
       SELECT 
         t.tower_id, 
         t.tower_name, 
@@ -40,9 +64,7 @@ router.get('/:tower_id', async (req, res) => {
       FROM tower t
       JOIN flat f ON t.flat_id = f.flat_id
       WHERE t.tower_id = ?
-      `,
-      [tower_id]
-    );
+    `, [tower_id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Tower tidak ditemukan.' });
@@ -66,12 +88,6 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    // Pastikan flat_id valid
-    const [flatCheck] = await db.query('SELECT flat_id FROM flat WHERE flat_id = ?', [flat_id]);
-    if (flatCheck.length === 0) {
-      return res.status(400).json({ message: 'flat_id tidak valid.' });
-    }
-
     await db.query(
       'INSERT INTO tower (tower_id, tower_name, flat_id) VALUES (?, ?, ?)',
       [tower_id, tower_name, flat_id]
@@ -80,6 +96,12 @@ router.post('/', async (req, res) => {
     res.status(201).json({ message: 'Tower berhasil ditambahkan.' });
   } catch (error) {
     console.error('Error menambahkan tower:', error);
+
+    // Tangani error duplikat ID agar lebih informatif
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'tower_id sudah digunakan.' });
+    }
+
     res.status(500).json({ message: 'Gagal menambahkan tower.' });
   }
 });
@@ -92,21 +114,12 @@ router.put('/:tower_id', async (req, res) => {
   const { tower_name, flat_id } = req.body;
 
   try {
-    // Cek dulu apakah tower ada
     const [towerCheck] = await db.query('SELECT tower_id FROM tower WHERE tower_id = ?', [tower_id]);
     if (towerCheck.length === 0) {
       return res.status(404).json({ message: 'Tower tidak ditemukan.' });
     }
 
-    // Jika flat_id dikirim, pastikan valid
-    if (flat_id) {
-      const [flatCheck] = await db.query('SELECT flat_id FROM flat WHERE flat_id = ?', [flat_id]);
-      if (flatCheck.length === 0) {
-        return res.status(400).json({ message: 'flat_id tidak valid.' });
-      }
-    }
-
-    const [result] = await db.query(
+    await db.query(
       'UPDATE tower SET tower_name = ?, flat_id = ? WHERE tower_id = ?',
       [tower_name, flat_id, tower_id]
     );

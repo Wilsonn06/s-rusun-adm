@@ -92,6 +92,7 @@ router.post('/', async (req, res) => {
 // =====================================================
 // PUT update data pemilik
 // =====================================================
+// PUT update data pemilik (dengan validasi unik NIK)
 router.put('/:pemilik_id', async (req, res) => {
   const { pemilik_id } = req.params;
   const { nama, nik, tanggal_lahir, jenis_kelamin, no_telepon, alamat } = req.body;
@@ -102,21 +103,36 @@ router.put('/:pemilik_id', async (req, res) => {
       return res.status(404).json({ message: 'Pemilik tidak ditemukan.' });
     }
 
+    // Jika NIK dikirim, cek apakah NIK ini sudah dipakai oleh pemilik lain
+    if (nik) {
+      const [nikRows] = await db.query('SELECT pemilik_id FROM pemilik WHERE nik = ? AND pemilik_id <> ?', [nik, pemilik_id]);
+      if (nikRows.length > 0) {
+        return res.status(400).json({ message: 'NIK sudah dipakai oleh pemilik lain.' });
+      }
+    }
+
     await db.query(
       `
       UPDATE pemilik
       SET nama = ?, nik = ?, tanggal_lahir = ?, jenis_kelamin = ?, no_telepon = ?, alamat = ?
       WHERE pemilik_id = ?
       `,
-      [nama, nik, tanggal_lahir, jenis_kelamin, no_telepon, alamat, pemilik_id]
+      [nama || null, nik || null, tanggal_lahir || null, jenis_kelamin || null, no_telepon || null, alamat || null, pemilik_id]
     );
 
     res.status(200).json({ message: 'Data pemilik berhasil diperbarui.' });
   } catch (error) {
     console.error('Error memperbarui data pemilik:', error);
+
+    // Tangani duplicate entry generik jika masih terjadi
+    if (error && error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Duplikasi data.' });
+    }
+
     res.status(500).json({ message: 'Gagal memperbarui data pemilik.' });
   }
 });
+
 
 // =====================================================
 // DELETE hapus pemilik
