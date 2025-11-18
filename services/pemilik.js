@@ -63,6 +63,7 @@ router.get('/:pemilik_id', async (req, res) => {
 // =====================================================
 // POST tambah pemilik baru
 // =====================================================
+// pemilik.js, di dalam router.post('/')
 router.post('/', async (req, res) => {
   const { pemilik_id, nama, nik, tanggal_lahir, jenis_kelamin, no_telepon, alamat } = req.body;
 
@@ -70,8 +71,11 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ message: 'pemilik_id, nama, dan nik wajib diisi.' });
   }
 
+  const conn = db; // kalau pakai pooling biasa
+
   try {
-    await db.query(
+    // 1. Insert ke tabel pemilik
+    await conn.query(
       `
       INSERT INTO pemilik (pemilik_id, nama, nik, tanggal_lahir, jenis_kelamin, no_telepon, alamat)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -79,7 +83,25 @@ router.post('/', async (req, res) => {
       [pemilik_id, nama, nik, tanggal_lahir, jenis_kelamin, no_telepon, alamat]
     );
 
-    res.status(201).json({ message: 'Pemilik berhasil ditambahkan.' });
+    // 2. Sekaligus buat akun login dengan username = pemilik_id dan password default
+    const defaultUsername = pemilik_id;      // atau nik
+    const defaultPassword = 'pemilik123';    // jelaskan di TA, bisa diganti nanti
+
+    await conn.query(
+      `
+      INSERT INTO users (username, password, role, pemilik_id)
+      VALUES (?, ?, 'pemilik', ?)
+      `,
+      [defaultUsername, defaultPassword, pemilik_id]
+    );
+
+    res.status(201).json({
+      message: 'Pemilik dan akun login berhasil ditambahkan.',
+      login_info: {
+        username: defaultUsername,
+        password: defaultPassword,
+      },
+    });
   } catch (error) {
     console.error('Error menambahkan pemilik:', error);
     if (error.code === 'ER_DUP_ENTRY') {

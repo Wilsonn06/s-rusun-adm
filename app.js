@@ -6,6 +6,9 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+// Auth Service (login semua user: admin & pemilik)
+app.use('/auth', require('./services/auth'));
+
 app.use('/flat', require('./services/flat'));
 app.use('/tower', require('./services/tower'));
 app.use('/unit', require('./services/unit'));

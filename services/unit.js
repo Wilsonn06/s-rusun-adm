@@ -75,11 +75,23 @@ router.get('/:unit_id', async (req, res) => {
 router.get('/:unit_id/devices', async (req, res) => {
   const { unit_id } = req.params;
   try {
-    const response = await axios.get(`${APP_URL}/devices/unit/${unit_id}`);
-    res.status(200).json(response.data.devices); // array langsung
+    // Ambil header Authorization yang datang dari frontend (admin login)
+    const authHeader = req.headers['authorization'] || '';
+
+    const response = await axios.get(
+      `${APP_URL}/devices/unit/${unit_id}`,
+      authHeader
+        ? { headers: { Authorization: authHeader } }
+        : {} // kalau kosong dan APP mewajibkan token, akan 401
+    );
+
+    res.status(200).json(response.data.devices);
   } catch (err) {
-    console.error('Gagal mengambil devices unit:', err.message);
-    res.status(500).json({ message: 'Gagal mengambil devices unit' });
+    console.error('Gagal mengambil devices unit:', err.response?.data || err.message);
+
+    const status = err.response?.status || 500;
+    const message = err.response?.data?.message || 'Gagal mengambil devices unit';
+    res.status(status).json({ message });
   }
 });
 
