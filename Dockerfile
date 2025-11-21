@@ -1,8 +1,32 @@
-FROM node:20-alpine
+# ===========================
+# 1) Build Stage
+# ===========================
+FROM node:18-alpine AS build
+
 WORKDIR /app
+
+# Copy package file saja dulu untuk caching layer
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Install dependencies (production only)
+RUN npm install --production
+
+# Copy source code
 COPY . .
-EXPOSE 3001
+
+# ===========================
+# 2) Release Stage
+# ===========================
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy hasil install dari stage build
+COPY --from=build /app ./
+
+ENV NODE_ENV=production
 ENV PORT=3001
-CMD ["node", "server.js"]
+
+EXPOSE 3001
+
+CMD ["node", "app.js"]
