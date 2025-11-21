@@ -4,7 +4,7 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package.json dan package-lock.json (kalau ada)
+# Copy package.json dan package-lock.json (kalau ada) test
 COPY package*.json ./
 
 # Install dependencies
