@@ -1,14 +1,10 @@
-// db.js (ubah dari versi hardcoded)
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || '',
-  database: process.env.DB_NAME || 'payment',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  host: 'mysql.srusun.id',
+  user: 'wilson',
+  password: 'WilsonSRusunDB!2025',
+  database: 'payment',
 });
 
 module.exports = pool;
