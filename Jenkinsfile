@@ -4,9 +4,6 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
-metadata:
-  labels:
-    jenkins: agent
 spec:
   containers:
   - name: docker
@@ -31,14 +28,13 @@ spec:
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image (Host Docker)') {
             steps {
                 sh """
                     docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
@@ -46,19 +42,21 @@ spec:
             }
         }
 
-        stage('Export Image TAR') {
+        stage('Import Image into k3d') {
             steps {
                 sh """
-                    docker save ${IMAGE_NAME}:${IMAGE_TAG} -o image.tar
+                    k3d image import ${IMAGE_NAME}:${IMAGE_TAG}
                 """
-                archiveArtifacts artifacts: 'image.tar', fingerprint: true
             }
         }
     }
 
     post {
         success {
-            echo "Image berhasil dibuild & diexport!"
+            echo "Image berhasil dibuild & di-import ke k3d!"
+        }
+        failure {
+            echo "Pipeline gagal."
         }
     }
 }
