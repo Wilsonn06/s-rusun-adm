@@ -26,7 +26,7 @@ spec:
     }
 
     environment {
-        IMAGE_NAME = "wilsonnn06/s-rusun-adm"
+        IMAGE_NAME = "s-rusun-adm"
         IMAGE_TAG = "latest"
     }
 
@@ -46,31 +46,19 @@ spec:
             }
         }
 
-        stage('Login DockerHub') {
+        stage('Export Image TAR') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
-                    usernameVariable: 'REGISTRY_USER',
-                    passwordVariable: 'REGISTRY_PASS'
-                )]) {
-                    sh "echo \$REGISTRY_PASS | docker login -u \$REGISTRY_USER --password-stdin"
-                }
-            }
-        }
-
-        stage('Push Image') {
-            steps {
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh """
+                    docker save ${IMAGE_NAME}:${IMAGE_TAG} -o image.tar
+                """
+                archiveArtifacts artifacts: 'image.tar', fingerprint: true
             }
         }
     }
 
     post {
         success {
-            echo "Build & Push berhasil!"
-        }
-        failure {
-            echo "Pipeline gagal."
+            echo "Image berhasil dibuild & diexport!"
         }
     }
 }
