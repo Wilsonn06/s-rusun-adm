@@ -1,51 +1,56 @@
 pipeline {
-  agent any
-  environment {
-    REGISTRY = "localhost:5000"
-    IMAGE = "${REGISTRY}/adm"
-    INFRA_REPO = "https://github.com/Wilsonn06/s-rusun-infra.git"
-    INFRA_BRANCH = "main"
-    DEPLOY_PATH = "adm/deployment.yaml"
-    GIT_EMAIL = "ci@local"
-    GIT_NAME  = "jenkins-ci"
-  }
-  stages {
-    stage('Checkout') {
-      steps { checkout scm }
+    agent any
+
+    environment {
+        IMAGE_NAME = "ghcr.io/<username>/s-rusun-adm"
+        IMAGE_TAG = "latest"
     }
-    stage('Build & Push Image') {
-      steps {
-        sh """
-          docker build -t ${IMAGE}:${GIT_COMMIT} .
-          docker push ${IMAGE}:${GIT_COMMIT}
-        """
-      }
-    }
-    stage('Update Infra Repo') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'infra-repo-creds', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
-          sh """
-            rm -rf infra || true
-            git clone ${INFRA_REPO} infra
-            cd infra
-            git checkout ${INFRA_BRANCH}
-            sed -i 's#image: ${REGISTRY}/adm:.*#image: ${REGISTRY}/adm:${GIT_COMMIT}#' ${DEPLOY_PATH}
-            git config user.email "${GIT_EMAIL}"
-            git config user.name "${GIT_NAME}"
-            git add ${DEPLOY_PATH}
-            git commit -m "ci: adm image update to ${GIT_COMMIT}" || echo "No changes"
-            git push https://${GIT_USER}:${GIT_PASS}@github.com/Wilsonn06/s-rusun-infra.git ${INFRA_BRANCH}
-          """
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh """
+                        docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    """
+                }
+            }
+        }
+
+        stage('Login Registry') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'registry-credentials',
+                    usernameVariable: 'REGISTRY_USER',
+                    passwordVariable: 'REGISTRY_PASS'
+                )]) {
+                    sh "echo \$REGISTRY_PASS | docker login ghcr.io -u \$REGISTRY_USER --password-stdin"
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                sh """
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
     }
-  }
-  post {
-    failure {
-      echo "Build failed!"
+
+    post {
+        success {
+            echo "Image berhasil dibuild dan dipush!"
+        }
+        failure {
+            echo "Pipeline gagal."
+        }
     }
-    success {
-      echo "Image built, pushed, and manifest updated."
-    }
-  }
 }
