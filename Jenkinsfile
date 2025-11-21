@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "ghcr.io/<username>/s-rusun-adm"
+        IMAGE_NAME = "wilsonnn06/s-rusun-adm"
         IMAGE_TAG = "latest"
     }
 
