@@ -21,7 +21,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        IMAGE_NAME=ghcr.io/${{ github.repository }}:latest
+        IMAGE_NAME=ghcr.io/wilsonn06/s-rusun-adm:latest
         echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
         docker build -t $IMAGE_NAME .
 
@@ -33,7 +33,7 @@ jobs:
       uses: peter-evans/repository-dispatch@v3
       with:
         token: ${{ secrets.REPO_PAT }}
-        repository: Wilsonn06/s-rusun-infra
+        repository: wilsonn06/s-rusun-infra
         event-type: image-update
         client-payload: |
           {
