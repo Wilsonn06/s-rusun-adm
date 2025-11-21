@@ -75,19 +75,11 @@ router.get('/:unit_id', async (req, res) => {
 router.get('/:unit_id/devices', async (req, res) => {
   const { unit_id } = req.params;
   try {
-    // Jangan baca / forward header Authorization sama sekali
-    // Kirim request ke APP backend tanpa header auth
     const response = await axios.get(`${APP_URL}/devices/unit/${unit_id}`);
-
-    // Jika APP mengembalikan struktur { devices: [...] } atau langsung [...], tangani keduanya
-    const devices = response.data?.devices ?? response.data;
-    res.status(200).json(devices);
+    res.status(200).json(response.data.devices); // array langsung
   } catch (err) {
-    console.error('Gagal mengambil devices unit:', err.response?.data || err.message);
-
-    const status = err.response?.status || 500;
-    const message = err.response?.data?.message || 'Gagal mengambil devices unit';
-    res.status(status).json({ message });
+    console.error('Gagal mengambil devices unit:', err.message);
+    res.status(500).json({ message: 'Gagal mengambil devices unit' });
   }
 });
 
