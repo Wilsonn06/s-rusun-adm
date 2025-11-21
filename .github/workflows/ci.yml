@@ -12,25 +12,27 @@ jobs:
     - name: Checkout source code
       uses: actions/checkout@v3
 
-    - name: Login to GitHub Container Registry
+    # ⛔ FIX UTAMA → login pakai PAT + username lowercase
+    - name: Login to GitHub Container Registry (with PAT)
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: wilsonn06
+        password: ${{ secrets.GHCR_PAT }}
 
+    # Build image
     - name: Build Docker image
       run: |
-        OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        OWNER="wilsonn06"
         IMAGE_NAME=ghcr.io/$OWNER/s-rusun-adm:latest
         echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
         docker build -t $IMAGE_NAME .
 
-
+    # Push image
     - name: Push Docker image
-      run: |
-        docker push $IMAGE_NAME
+      run: docker push $IMAGE_NAME
 
+    # Notify repo infra
     - name: Notify infra repo to deploy
       uses: peter-evans/repository-dispatch@v3
       with:
@@ -39,6 +41,6 @@ jobs:
         event-type: image-update
         client-payload: |
           {
-            "service": "${{ github.event.repository.name }}",
+            "service": "s-rusun-adm",
             "image": "${{ env.IMAGE_NAME }}"
           }
