@@ -24,14 +24,14 @@ pipeline {
             }
         }
 
-        stage('Login Registry') {
+        stage('Login DockerHub') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'registry-credentials',
+                    credentialsId: 'dockerhub-creds',
                     usernameVariable: 'REGISTRY_USER',
                     passwordVariable: 'REGISTRY_PASS'
                 )]) {
-                    sh "echo \$REGISTRY_PASS | docker login ghcr.io -u \$REGISTRY_USER --password-stdin"
+                    sh "echo \$REGISTRY_PASS | docker login -u \$REGISTRY_USER --password-stdin"
                 }
             }
         }
@@ -47,7 +47,7 @@ pipeline {
 
     post {
         success {
-            echo "Image berhasil dibuild dan dipush!"
+            echo "Image berhasil dibuild dan dipush ke DockerHub!"
         }
         failure {
             echo "Pipeline gagal."
