@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    pipeline {
+    agent {
+        kubernetes {
+            label 'docker'
+        }
+    }
 
     environment {
         IMAGE_NAME = "wilsonnn06/s-rusun-adm"
