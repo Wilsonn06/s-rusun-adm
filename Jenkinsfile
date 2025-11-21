@@ -4,59 +4,54 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    jenkins: agent
 spec:
   containers:
-  - name: docker
-    image: docker:24.0.5
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
     command:
     - cat
     tty: true
     volumeMounts:
-    - name: dockersock
-      mountPath: /var/run/docker.sock
+    - name: docker-config
+      mountPath: /kaniko/.docker
   volumes:
-  - name: dockersock
-    hostPath:
-      path: /var/run/docker.sock
+  - name: docker-config
+    secret:
+      secretName: dockerhub-config-secret
 """
         }
     }
 
     environment {
-        IMAGE_NAME = "s-rusun-adm"
+        IMAGE_NAME = "wilsonnn06/s-rusun-adm"
         IMAGE_TAG = "latest"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build Image (Host Docker)') {
+        stage('Build & Push with Kaniko') {
             steps {
                 sh """
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                """
-            }
-        }
-
-        stage('Import Image into k3d') {
-            steps {
-                sh """
-                    k3d image import ${IMAGE_NAME}:${IMAGE_TAG}
+                /kaniko/executor \
+                    --context `pwd` \
+                    --dockerfile `pwd`/Dockerfile \
+                    --destination=${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
         }
     }
 
     post {
-        success {
-            echo "Image berhasil dibuild & di-import ke k3d!"
-        }
-        failure {
-            echo "Pipeline gagal."
-        }
+        success { echo "Build & Push via Kaniko berhasil!" }
+        failure { echo "Pipeline gagal." }
     }
 }
