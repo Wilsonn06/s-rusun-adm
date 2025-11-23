@@ -1,4 +1,4 @@
-name: CI - Build And Push Image (GKE)
+name: CI - Build & Push Image to GCP
 
 on:
   push:
@@ -12,23 +12,27 @@ jobs:
     - name: Checkout source code
       uses: actions/checkout@v3
 
+    # Auth ke Google Cloud
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure Docker for Artifact Registry
+    # Auth Docker to Artifact Registry
+    - name: Configure Docker for AR
       run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
 
-    - name: Build Docker image
+    # Build and push image
+    - name: Build & Push Image
       run: |
-        PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-        IMAGE=asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:${{ github.sha }}
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        IMAGE="asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:latest"
         echo "IMAGE=$IMAGE" >> $GITHUB_ENV
         docker build -t $IMAGE .
         docker push $IMAGE
 
-    - name: Notify infra repo (GitOps)
+    # Notify infra repo (GitOps)
+    - name: Notify infra repo
       uses: peter-evans/repository-dispatch@v3
       with:
         token: ${{ secrets.REPO_PAT }}
