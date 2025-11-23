@@ -1,4 +1,4 @@
-name: CI - Build & Push Image to GCP
+name: CI - Build & Push image to GCP
 
 on:
   push:
