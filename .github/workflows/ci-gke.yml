@@ -18,20 +18,20 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # Auth Docker ke Artifact Registry
+    # Configure Docker for Artifact Registry
     - name: Configure Docker for Artifact Registry
       run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
 
-    # Build & Push image ke Artifact Registry
+    # Build & Push Docker image
     - name: Build and Push image
       run: |
-        PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-        IMAGE="asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:${{ github.sha }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        IMAGE="asia-southeast2-docker.pkg.dev/${PROJECT_ID}/rusun-repo/s-rusun-adm:${{ github.sha }}"
         echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-        docker build -t $IMAGE .
-        docker push $IMAGE
+        docker build -t "$IMAGE" .
+        docker push "$IMAGE"
 
-    # Ambil credential cluster GKE
+    # Get GKE credentials
     - name: Get GKE credentials
       uses: google-github-actions/get-gke-credentials@v2
       with:
@@ -39,11 +39,11 @@ jobs:
         location: asia-southeast2-a
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    # Update image di deployment file (folder GKE!)
+    # Update image inside deployment.yaml
     - name: Update deployment image
       run: |
-        sed -i "s|image:.*|image: $IMAGE|g" gke/s-rusun-adm/deployment.yaml
+        sed -i "s|image:.*|image: $IMAGE|g" k8s/s-rusun-adm/deployment.yaml
 
-    # Apply manifest ke cluster GKE
-    - name: Apply manifest to GKE
-      run: kubectl apply -f gke/s-rusun-adm/
+    # Apply deployment to GKE
+    - name: Apply manifest
+      run: kubectl apply -f k8s/s-rusun-adm/
