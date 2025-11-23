@@ -24,6 +24,26 @@ jobs:
 
     # Build & Push image
     - name: Build and Push image
-    - run: |
+      run: |
         PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
-        IMAGE
+        IMAGE="asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:${{ github.sha }}"
+        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+        docker build -t $IMAGE .
+        docker push $IMAGE
+
+    # Get GKE credentials
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
+        location: asia-southeast2-a
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    # Update deployment image
+    - name: Update deployment image
+      run: |
+        sed -i "s|image:.*|image: $IMAGE|g" k8s/s-rusun-adm/deployment.yaml
+
+    # Apply manifest
+    - name: Apply manifest to GKE
+      run: kubectl apply -f k8s/s-rusun-adm/
