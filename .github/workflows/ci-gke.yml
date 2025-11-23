@@ -1,4 +1,4 @@
-name: Deploy to GKE (ADM)
+name: Deploy to GKE (adm)
 
 on:
   push:
