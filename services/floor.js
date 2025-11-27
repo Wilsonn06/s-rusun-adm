@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db'); 
 
-
 router.get('/tower/:tower_id', async (req, res) => {
   const { tower_id } = req.params;
   try {
@@ -78,6 +77,48 @@ router.get('/:floor_id', async (req, res) => {
   } catch (error) {
     console.error('Error mengambil lantai berdasarkan id:', error);
     res.status(500).json({ message: 'Gagal mengambil data lantai.' });
+  }
+});
+
+router.get('/detail/:floor_id', async (req, res) => {
+  const { floor_id } = req.params;
+  try {
+    const [floorRows] = await db.query(`
+      SELECT 
+        fl.floor_id,
+        fl.floor_number,
+        fl.tower_id,
+        fl.flat_id,
+        t.tower_name,
+        f.flat_name
+      FROM floor fl
+      JOIN tower t ON fl.tower_id = t.tower_id
+      JOIN flat f ON fl.flat_id = f.flat_id
+      WHERE fl.floor_id = ?
+    `, [floor_id]);
+
+    if (floorRows.length === 0) {
+      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
+    }
+
+    const [unitRows] = await db.query(`
+      SELECT 
+        u.unit_id,
+        u.unit_number,
+        u.pemilik_id,
+        f.floor_number
+      FROM unit u
+      JOIN floor f ON u.floor_id = f.floor_id
+      WHERE u.floor_id = ?
+    `, [floor_id]);
+
+    res.status(200).json({
+      ...floorRows[0],
+      units: unitRows,
+    });
+  } catch (error) {
+    console.error('Error mengambil detail floor:', error);
+    res.status(500).json({ message: 'Gagal mengambil detail floor.' });
   }
 });
 
