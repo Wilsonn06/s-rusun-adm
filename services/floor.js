@@ -2,6 +2,31 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+router.get('/tower/:tower_id', async (req, res) => {
+  const { tower_id } = req.params;
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        fl.floor_id,
+        fl.floor_number,
+        fl.tower_id,
+        t.tower_name,
+        f.flat_id,
+        f.flat_name
+      FROM floor fl
+      JOIN tower t ON fl.tower_id = t.tower_id
+      JOIN flat f ON t.flat_id = f.flat_id
+      WHERE fl.tower_id = ?
+      ORDER BY fl.floor_number
+    `, [tower_id]);
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error mengambil floor berdasarkan tower:', error);
+    res.status(500).json({ message: 'Gagal mengambil data floor berdasarkan tower.' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -122,6 +147,7 @@ router.put('/:floor_id', async (req, res) => {
     res.status(500).json({ message: 'Gagal memperbarui lantai.' });
   }
 });
+
 
 router.delete('/:floor_id', async (req, res) => {
   const { floor_id } = req.params;
