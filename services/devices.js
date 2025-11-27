@@ -2,10 +2,8 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-// APP BACKEND (penyedia data asli devices)
 const APP_URL = "http://s-rusun-app:3002";
 
-// GET all devices
 router.get('/', async (req, res) => {
   try {
     const response = await axios.get(`${APP_URL}/devices`);
@@ -16,7 +14,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET devices by unit
 router.get('/unit/:unit_id', async (req, res) => {
   try {
     const response = await axios.get(`${APP_URL}/devices/unit/${req.params.unit_id}`);
@@ -27,7 +24,6 @@ router.get('/unit/:unit_id', async (req, res) => {
   }
 });
 
-// GET device detail
 router.get('/detail/:device_id', async (req, res) => {
   try {
     const response = await axios.get(`${APP_URL}/devices/${req.params.device_id}`);
@@ -38,7 +34,6 @@ router.get('/detail/:device_id', async (req, res) => {
   }
 });
 
-// CREATE device
 router.post('/', async (req, res) => {
   try {
     const response = await axios.post(`${APP_URL}/devices`, req.body);
@@ -49,7 +44,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// UPDATE device (forward ke APP backend)
 router.put('/:device_id', async (req, res) => {
   try {
     const response = await axios.put(`${APP_URL}/devices/${req.params.device_id}`, req.body);
@@ -60,7 +54,6 @@ router.put('/:device_id', async (req, res) => {
   }
 });
 
-// DELETE device
 router.delete('/:device_id', async (req, res) => {
   try {
     const response = await axios.delete(`${APP_URL}/devices/${req.params.device_id}`);
@@ -70,7 +63,5 @@ router.delete('/:device_id', async (req, res) => {
     res.status(500).json({ message: "Gagal menghapus device" });
   }
 });
-
-
 
 module.exports = router;
