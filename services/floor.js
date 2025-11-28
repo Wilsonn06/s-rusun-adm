@@ -2,51 +2,19 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-router.get('/tower/:tower_id', async (req, res) => {
-  const { tower_id } = req.params;
-
-  try {
-    const [rows] = await db.query(`
-      SELECT 
-        fl.floor_id,
-        fl.floor_number,
-        fl.tower_id,
-        t.tower_name,
-        f.flat_id,
-        f.flat_name
-      FROM floor fl
-      JOIN tower t ON fl.tower_id = t.tower_id
-      JOIN flat f ON t.flat_id = f.flat_id
-      WHERE fl.tower_id = ?
-      ORDER BY fl.floor_number
-    `, [tower_id]);
-
-    res.status(200).json(rows);
-  } catch (error) {
-    console.error('Error mengambil floor berdasarkan tower:', error);
-    res.status(500).json({ message: 'Gagal mengambil data floor berdasarkan tower.' });
-  }
-});
-
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT 
-        fl.floor_id,
-        fl.floor_number,
-        fl.tower_id,
-        t.tower_name,
-        f.flat_id,
-        f.flat_name
+      SELECT fl.floor_id, fl.floor_number, fl.tower_id,
+             t.tower_name, f.flat_id, f.flat_name
       FROM floor fl
       JOIN tower t ON fl.tower_id = t.tower_id
       JOIN flat f ON t.flat_id = f.flat_id
-      ORDER BY fl.floor_id
+      ORDER BY fl.floor_number
     `);
-
-    res.status(200).json(rows);
-  } catch (error) {
-    console.error('Error mengambil data floor:', error);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Gagal mengambil data floor.' });
   }
 });
@@ -56,71 +24,39 @@ router.get('/:floor_id', async (req, res) => {
 
   try {
     const [rows] = await db.query(`
-      SELECT 
-        fl.floor_id,
-        fl.floor_number,
-        fl.tower_id,
-        t.tower_name,
-        f.flat_id,
-        f.flat_name
+      SELECT fl.floor_id, fl.floor_number, fl.tower_id,
+             t.tower_name, f.flat_id, f.flat_name
       FROM floor fl
       JOIN tower t ON fl.tower_id = t.tower_id
       JOIN flat f ON t.flat_id = f.flat_id
       WHERE fl.floor_id = ?
     `, [floor_id]);
 
-    if (rows.length === 0) {
+    if (!rows.length)
       return res.status(404).json({ message: 'Floor tidak ditemukan.' });
-    }
 
-    res.status(200).json(rows[0]);
-  } catch (error) {
-    console.error('Error mengambil floor berdasarkan ID:', error);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Gagal mengambil data floor.' });
   }
 });
 
-router.get('/detail/:floor_id', async (req, res) => {
+router.get('/:floor_id/unit', async (req, res) => {
   const { floor_id } = req.params;
 
   try {
-    // Info floor
-    const [floorRows] = await db.query(`
-      SELECT 
-        fl.floor_id,
-        fl.floor_number,
-        fl.tower_id,
-        t.tower_name,
-        f.flat_id,
-        f.flat_name
-      FROM floor fl
-      JOIN tower t ON fl.tower_id = t.tower_id
-      JOIN flat f ON t.flat_id = f.flat_id
-      WHERE fl.floor_id = ?
-    `, [floor_id]);
-
-    if (floorRows.length === 0) {
-      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
-    }
-
-    // Daftar unit dalam floor
-    const [unitRows] = await db.query(`
-      SELECT 
-        u.unit_id,
-        u.unit_number,
-        u.pemilik_id
+    const [rows] = await db.query(`
+      SELECT u.unit_id, u.unit_number, u.pemilik_id, u.floor_id
       FROM unit u
       WHERE u.floor_id = ?
+      ORDER BY u.unit_number
     `, [floor_id]);
 
-    res.status(200).json({
-      ...floorRows[0],
-      units: unitRows,
-    });
-
-  } catch (error) {
-    console.error('Error mengambil detail floor:', error);
-    res.status(500).json({ message: 'Gagal mengambil detail floor.' });
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal mengambil unit dalam floor ini.' });
   }
 });
 
@@ -129,15 +65,20 @@ router.post('/', async (req, res) => {
 
   if (!floor_id || !floor_number || !tower_id) {
     return res.status(400).json({
-      message: 'floor_id, floor_number, dan tower_id wajib diisi.',
+      message: 'floor_id, floor_number, dan tower_id wajib diisi.'
     });
   }
 
   try {
-    // Validasi tower
-    const [tower] = await db.query('SELECT * FROM tower WHERE tower_id = ?', [tower_id]);
-    if (tower.length === 0) {
-      return res.status(400).json({ message: 'tower_id tidak valid.' });
+    const [towerCheck] = await db.query(
+      'SELECT tower_id FROM tower WHERE tower_id = ?',
+      [tower_id]
+    );
+
+    if (!towerCheck.length) {
+      return res.status(400).json({
+        message: `tower_id '${tower_id}' tidak valid.`
+      });
     }
 
     await db.query(
@@ -146,40 +87,42 @@ router.post('/', async (req, res) => {
     );
 
     res.status(201).json({ message: 'Floor berhasil ditambahkan.' });
-  } catch (error) {
-    console.error('Error menambahkan floor:', error);
+
+  } catch (err) {
+    console.error("POST floor error:", err);
+
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        message: `Lantai dengan ID '${floor_id}' sudah ada.`
+      });
+    }
+
     res.status(500).json({ message: 'Gagal menambahkan floor.' });
   }
 });
 
-
 router.put('/:floor_id', async (req, res) => {
   const { floor_id } = req.params;
-  const { floor_number, tower_id } = req.body;
+  const { floor_number } = req.body;
 
   try {
-    // Cek apakah floor ada
-    const [floorCheck] = await db.query('SELECT * FROM floor WHERE floor_id = ?', [floor_id]);
-    if (floorCheck.length === 0) {
-      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
-    }
-
-    // Cek tower (jika dikirim)
-    if (tower_id) {
-      const [towerCheck] = await db.query('SELECT * FROM tower WHERE tower_id = ?', [tower_id]);
-      if (towerCheck.length === 0) {
-        return res.status(400).json({ message: 'tower_id tidak valid.' });
-      }
-    }
-
-    await db.query(
-      'UPDATE floor SET floor_number = ?, tower_id = ? WHERE floor_id = ?',
-      [floor_number, tower_id, floor_id]
+    const [check] = await db.query(
+      'SELECT floor_id FROM floor WHERE floor_id = ?',
+      [floor_id]
     );
 
-    res.status(200).json({ message: 'Floor berhasil diperbarui.' });
-  } catch (error) {
-    console.error('Error memperbarui floor:', error);
+    if (!check.length)
+      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
+
+    await db.query(
+      'UPDATE floor SET floor_number = ? WHERE floor_id = ?',
+      [floor_number, floor_id]
+    );
+
+    res.json({ message: 'Floor berhasil diperbarui.' });
+
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Gagal memperbarui floor.' });
   }
 });
@@ -188,14 +131,17 @@ router.delete('/:floor_id', async (req, res) => {
   const { floor_id } = req.params;
 
   try {
-    const [result] = await db.query('DELETE FROM floor WHERE floor_id = ?', [floor_id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
-    }
+    const [result] = await db.query(
+      'DELETE FROM floor WHERE floor_id = ?',
+      [floor_id]
+    );
 
-    res.status(200).json({ message: 'Floor berhasil dihapus.' });
-  } catch (error) {
-    console.error('Error menghapus floor:', error);
+    if (!result.affectedRows)
+      return res.status(404).json({ message: 'Floor tidak ditemukan.' });
+
+    res.json({ message: 'Floor berhasil dihapus.' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Gagal menghapus floor.' });
   }
 });
