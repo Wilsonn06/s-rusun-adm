@@ -46,12 +46,13 @@ jobs:
       - name: Build Docker image
         run: |
           OWNER="wilsonn06"
-          IMAGE_NAME=ghcr.io/$OWNER/s-rusun-adm:latest
-          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-          docker build -t $IMAGE_NAME .
+          SHA_SHORT="${GITHUB_SHA::7}"
+          IMAGE_NAME="ghcr.io/$OWNER/s-rusun-adm:sha-$SHA_SHORT"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE_NAME" .
 
       - name: Push Docker image
-        run: docker push $IMAGE_NAME
+        run: docker push "$IMAGE_NAME"
 
       - name: Notify infra repo to deploy
         uses: peter-evans/repository-dispatch@v3
