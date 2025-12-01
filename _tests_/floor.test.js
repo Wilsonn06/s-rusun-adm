@@ -10,8 +10,23 @@ jest.mock('../db', () => {
 const db = require('../db');
 
 describe('Floor endpoints', () => {
+  let consoleErrorSpy;
+
+  const muteConsoleError = () => {
+    if (!consoleErrorSpy) {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (consoleErrorSpy) {
+      consoleErrorSpy.mockRestore();
+      consoleErrorSpy = null;
+    }
   });
 
   describe('GET /floor', () => {
@@ -33,6 +48,16 @@ describe('Floor endpoints', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(mockRows);
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/floor');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('message', 'Gagal mengambil data floor.');
     });
   });
 
@@ -64,6 +89,16 @@ describe('Floor endpoints', () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Floor tidak ditemukan.');
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/floor/FL001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('message', 'Gagal mengambil data floor.');
     });
   });
 
@@ -113,6 +148,7 @@ describe('Floor endpoints', () => {
     });
 
     it('should return 409 on duplicate floor_id', async () => {
+      muteConsoleError();
       db.query
         .mockResolvedValueOnce([[{ tower_id: 'T001' }]])
         .mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' });
@@ -127,6 +163,25 @@ describe('Floor endpoints', () => {
       expect(res.body).toHaveProperty(
         'message',
         "Lantai dengan ID 'FL002' sudah ada."
+      );
+    });
+
+    it('should return 500 on unknown db error', async () => {
+      muteConsoleError();
+      db.query
+        .mockResolvedValueOnce([[{ tower_id: 'T001' }]])
+        .mockRejectedValueOnce(new Error('Unknown DB error'));
+
+      const res = await request(app).post('/floor').send({
+        floor_id: 'FL003',
+        floor_number: 3,
+        tower_id: 'T001',
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menambahkan floor.'
       );
     });
   });

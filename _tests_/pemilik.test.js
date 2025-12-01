@@ -10,8 +10,23 @@ jest.mock('../db', () => {
 const db = require('../db');
 
 describe('Pemilik endpoints', () => {
+  let consoleErrorSpy;
+
+  const muteConsoleError = () => {
+    if (!consoleErrorSpy) {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (consoleErrorSpy) {
+      consoleErrorSpy.mockRestore();
+      consoleErrorSpy = null;
+    }
   });
 
   describe('GET /pemilik', () => {
@@ -31,6 +46,19 @@ describe('Pemilik endpoints', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(mockRows);
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/pemilik');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal mengambil data pemilik.'
+      );
     });
   });
 
@@ -59,6 +87,19 @@ describe('Pemilik endpoints', () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Pemilik tidak ditemukan.');
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/pemilik/P001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal mengambil data pemilik.'
+      );
     });
   });
 
@@ -97,6 +138,7 @@ describe('Pemilik endpoints', () => {
     });
 
     it('should return 400 on duplicate pemilik_id', async () => {
+      muteConsoleError();
       db.query.mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' });
 
       const res = await request(app).post('/pemilik').send({
@@ -107,6 +149,23 @@ describe('Pemilik endpoints', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.body).toHaveProperty('message');
+    });
+
+    it('should return 500 on unknown db error', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('Unknown DB error'));
+
+      const res = await request(app).post('/pemilik').send({
+        pemilik_id: 'P003',
+        nama: 'Andi',
+        nik: '789',
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menambahkan pemilik.'
+      );
     });
   });
 
@@ -130,6 +189,19 @@ describe('Pemilik endpoints', () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Pemilik tidak ditemukan.');
+    });
+
+    it('should return 500 when db delete fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).delete('/pemilik/P001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menghapus pemilik.'
+      );
     });
   });
 });

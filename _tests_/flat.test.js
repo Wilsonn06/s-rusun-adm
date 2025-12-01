@@ -10,8 +10,23 @@ jest.mock('../db', () => {
 const db = require('../db');
 
 describe('Flat endpoints', () => {
+  let consoleErrorSpy;
+
+  const muteConsoleError = () => {
+    if (!consoleErrorSpy) {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (consoleErrorSpy) {
+      consoleErrorSpy.mockRestore();
+      consoleErrorSpy = null;
+    }
   });
 
   describe('GET /flat', () => {
@@ -30,6 +45,7 @@ describe('Flat endpoints', () => {
     });
 
     it('should return 500 when db query fails', async () => {
+      muteConsoleError();
       db.query.mockRejectedValueOnce(new Error('DB error'));
 
       const res = await request(app).get('/flat');
@@ -61,6 +77,16 @@ describe('Flat endpoints', () => {
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Flat tidak ditemukan.');
     });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/flat/F001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('message', 'Gagal mengambil data flat.');
+    });
   });
 
   describe('GET /flat/:flat_id/tower', () => {
@@ -79,6 +105,7 @@ describe('Flat endpoints', () => {
     });
 
     it('should return 500 when db query fails', async () => {
+      muteConsoleError();
       db.query.mockRejectedValueOnce(new Error('DB error'));
 
       const res = await request(app).get('/flat/F001/tower');
@@ -121,6 +148,7 @@ describe('Flat endpoints', () => {
     });
 
     it('should return 409 on duplicate flat_id', async () => {
+      muteConsoleError();
       db.query.mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' });
 
       const res = await request(app).post('/flat').send({
@@ -132,6 +160,22 @@ describe('Flat endpoints', () => {
       expect(res.body).toHaveProperty(
         'message',
         "Rusun dengan ID 'F001' sudah ada."
+      );
+    });
+
+    it('should return 500 on unknown db error', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('Unknown DB error'));
+
+      const res = await request(app).post('/flat').send({
+        flat_id: 'F004',
+        flat_name: 'Rusun D',
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menambahkan flat.'
       );
     });
   });
@@ -166,6 +210,22 @@ describe('Flat endpoints', () => {
         'Flat tidak ditemukan.'
       );
     });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).put('/flat/F001').send({
+        flat_name: 'Rusun A Baru',
+        flat_address: 'Jl. A No. 1',
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal memperbarui flat.'
+      );
+    });
   });
 
   describe('DELETE /flat/:flat_id', () => {
@@ -190,6 +250,19 @@ describe('Flat endpoints', () => {
       expect(res.body).toHaveProperty(
         'message',
         'Flat tidak ditemukan.'
+      );
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).delete('/flat/F001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menghapus flat.'
       );
     });
   });

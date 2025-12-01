@@ -20,8 +20,23 @@ const db = require('../db');
 const axios = require('axios');
 
 describe('Unit endpoints', () => {
+  let consoleErrorSpy;
+
+  const muteConsoleError = () => {
+    if (!consoleErrorSpy) {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    if (consoleErrorSpy) {
+      consoleErrorSpy.mockRestore();
+      consoleErrorSpy = null;
+    }
   });
 
   describe('GET /unit', () => {
@@ -46,6 +61,16 @@ describe('Unit endpoints', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(mockRows);
+    });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/unit');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('message', 'Gagal mengambil data unit.');
     });
   });
 
@@ -82,6 +107,16 @@ describe('Unit endpoints', () => {
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Unit tidak ditemukan.');
     });
+
+    it('should return 500 when db query fails', async () => {
+      muteConsoleError();
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).get('/unit/U001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('message', 'Gagal mengambil data unit.');
+    });
   });
 
   describe('GET /unit/:unit_id/devices', () => {
@@ -95,6 +130,19 @@ describe('Unit endpoints', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual([{ id: 'D1' }, { id: 'D2' }]);
       expect(axios.get).toHaveBeenCalled();
+    });
+
+    it('should handle error from app service', async () => {
+      muteConsoleError();
+      axios.get.mockRejectedValueOnce(new Error('App error'));
+
+      const res = await request(app).get('/unit/U001/devices');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal mengambil devices unit.'
+      );
     });
   });
 
@@ -130,7 +178,7 @@ describe('Unit endpoints', () => {
 
     it('should create unit when data valid (no pemilik)', async () => {
       db.query
-        .mockResolvedValueOnce([[{ floor_id: 'FL001' }]]) 
+        .mockResolvedValueOnce([[{ floor_id: 'FL001' }]])
         .mockResolvedValueOnce([{}]);
 
       const res = await request(app).post('/unit').send({
@@ -144,6 +192,7 @@ describe('Unit endpoints', () => {
     });
 
     it('should return 409 on duplicate unit_id', async () => {
+      muteConsoleError();
       db.query
         .mockResolvedValueOnce([[{ floor_id: 'FL001' }]])
         .mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' });
@@ -158,6 +207,25 @@ describe('Unit endpoints', () => {
       expect(res.body).toHaveProperty(
         'message',
         "Unit dengan ID 'U002' sudah ada."
+      );
+    });
+
+    it('should return 500 on unknown db error', async () => {
+      muteConsoleError();
+      db.query
+        .mockResolvedValueOnce([[{ floor_id: 'FL001' }]])
+        .mockRejectedValueOnce(new Error('Unknown DB error'));
+
+      const res = await request(app).post('/unit').send({
+        unit_id: 'U003',
+        unit_number: '103',
+        floor_id: 'FL001',
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menambahkan unit.'
       );
     });
   });
@@ -185,6 +253,20 @@ describe('Unit endpoints', () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.body).toHaveProperty('message', 'Unit tidak ditemukan.');
+    });
+
+    it('should return 500 when db delete fails', async () => {
+      muteConsoleError();
+      axios.delete.mockResolvedValueOnce({ data: {} });
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const res = await request(app).delete('/unit/U001');
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty(
+        'message',
+        'Gagal menghapus unit.'
+      );
     });
   });
 });
