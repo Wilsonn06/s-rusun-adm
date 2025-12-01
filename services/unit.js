@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const db = require('../db');
 
-const APP_URL = 'http://localhost:3002';
+const APP_URL = 'http://s-rusun-app:3002';
 
 router.get('/', async (req, res) => {
   try {
