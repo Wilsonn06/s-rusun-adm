@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const APP_URL = "http://s-rusun-app:3002";// app
+const APP_URL = "http://s-rusun-app:3002";// tes1
 
 router.get('/', async (req, res) => {
   try {
