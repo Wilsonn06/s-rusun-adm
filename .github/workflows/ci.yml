@@ -1,46 +1,66 @@
-name: CI - Build And Push Image
+name: CI - Test, Build And Push Image
 
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
-  build:
+  test:
+    name: Run Node.js tests
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v3
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
-    # ⛔ FIX UTAMA → login pakai PAT + username lowercase
-    - name: Login to GitHub Container Registry (with PAT)
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: wilsonn06
-        password: ${{ secrets.GHCR_PAT }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
 
-    # Build image
-    - name: Build Docker image
-      run: |
-        OWNER="wilsonn06"
-        IMAGE_NAME=ghcr.io/$OWNER/s-rusun-adm:latest
-        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-        docker build -t $IMAGE_NAME .
+      - name: Install dependencies
+        run: npm ci
 
-    # Push image
-    - name: Push Docker image
-      run: docker push $IMAGE_NAME
+      - name: Run tests
+        run: npm test
 
-    # Notify repo infra
-    - name: Notify infra repo to deploy
-      uses: peter-evans/repository-dispatch@v3
-      with:
-        token: ${{ secrets.REPO_PAT }}
-        repository: wilsonn06/s-rusun-infra
-        event-type: image-update
-        client-payload: |
-          {
-            "service": "s-rusun-adm",
-            "image": "${{ env.IMAGE_NAME }}"
-          }
+  build:
+    name: Build & Push Docker image
+    runs-on: ubuntu-latest
+    needs: test  # ⬅️ build hanya jalan kalau job "test" sukses
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry (with PAT)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: wilsonn06
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build Docker image
+        run: |
+          OWNER="wilsonn06"
+          IMAGE_NAME=ghcr.io/$OWNER/s-rusun-adm:latest
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          docker build -t $IMAGE_NAME .
+
+      - name: Push Docker image
+        run: docker push $IMAGE_NAME
+
+      - name: Notify infra repo to deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          repository: wilsonn06/s-rusun-infra
+          event-type: image-update
+          client-payload: |
+            {
+              "service": "s-rusun-adm",
+              "image": "${{ env.IMAGE_NAME }}"
+            }

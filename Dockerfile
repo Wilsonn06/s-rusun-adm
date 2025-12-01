@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3001
 
 # Jalankan aplikasi
-CMD ["node", "app.js"]
+CMD ["node", "server.js"]

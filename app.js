@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -13,6 +12,4 @@ app.use('/floor', require('./services/floor'));
 app.use('/pemilik', require('./services/pemilik'));
 app.use('/devices', require('./services/devices'));
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
