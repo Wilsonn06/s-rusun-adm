@@ -28,7 +28,7 @@ jobs:
   build:
     name: Build & Push image to GCP Artifact Registry
     runs-on: ubuntu-latest
-    needs: test  # build hanya jalan kalau job "test" sukses
+    needs: test
 
     steps:
       - name: Checkout source code
@@ -44,14 +44,15 @@ jobs:
       - name: Configure Docker for AR
         run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
 
-      # Build and push image
+      # Build and push image dengan tag unik sha-xxxxxxx
       - name: Build & Push Image
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          IMAGE="asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:latest"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-          docker build -t $IMAGE .
-          docker push $IMAGE
+          SHA_SHORT="${GITHUB_SHA::7}"
+          IMAGE="asia-southeast2-docker.pkg.dev/$PROJECT_ID/rusun-repo/s-rusun-adm:sha-$SHA_SHORT"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
 
       # Notify infra repo (GitOps)
       - name: Notify infra repo
