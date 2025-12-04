@@ -1,0 +1,69 @@
+name: CI Local - Test, Build & Notify Infra (Local Cluster)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Run Node.js tests (local cluster pipeline)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  build-and-notify-local:
+    name: Build & Push image, then notify infra (local cluster)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry (with PAT)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: wilsonn06
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build Docker image (local cluster)
+        run: |
+          OWNER="wilsonn06"
+          SERVICE_NAME="s-rusun-adm"
+          SHA_SHORT="${GITHUB_SHA::7}"
+          IMAGE_NAME="ghcr.io/${OWNER}/${SERVICE_NAME}:sha-${SHA_SHORT}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
+          echo "Built image for local cluster: ${IMAGE_NAME}"
+          docker build -t "${IMAGE_NAME}" .
+
+      - name: Push Docker image (local cluster)
+        run: |
+          echo "Pushing image for local cluster: ${IMAGE_NAME}"
+          docker push "${IMAGE_NAME}"
+
+      - name: Notify infra repo to deploy (local cluster)
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          repository: wilsonn06/s-rusun-infra
+          event-type: image-update-local
+          client-payload: |
+            {
+              "service": "s-rusun-adm",
+              "image": "${{ env.IMAGE_NAME }}"
+            }
