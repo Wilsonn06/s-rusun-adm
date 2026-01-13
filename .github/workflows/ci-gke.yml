@@ -34,17 +34,14 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      # Auth ke Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Auth Docker to Artifact Registry
       - name: Configure Docker for AR
         run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
 
-      # Build and push image dengan tag unik sha-xxxxxxx
       - name: Build & Push Image
         run: |
           PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
@@ -54,7 +51,6 @@ jobs:
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
-      # Notify infra repo (GitOps)
       - name: Notify infra repo
         uses: peter-evans/repository-dispatch@v3
         with:
